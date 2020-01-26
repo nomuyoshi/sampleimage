@@ -35,10 +35,10 @@ type CLI struct {
 }
 
 func (c *CLI) flagSettings(args []string) {
-	c.Flag.IntVarP(&width, "width", "W", 100, "image width")
-	c.Flag.IntVarP(&height, "height", "H", 100, "image height")
+	c.Flag.IntVarP(&width, "width", "W", 300, "image width")
+	c.Flag.IntVarP(&height, "height", "H", 300, "image height")
 	c.Flag.StringVarP(&text, "text", "t", "SAMPLE", "image text")
-	c.Flag.StringVarP(&bg, "bg", "c", "gray", "image background color.")
+	c.Flag.StringVar(&bg, "bg", "gray", "image background color")
 	c.Flag.SetOutput(c.OutStream)
 	c.Flag.Usage = func() {
 		fmt.Fprintf(c.OutStream, "Usage: sampleimage [file] [options]\n\n")
@@ -60,22 +60,11 @@ func (c *CLI) Run(args []string) int {
 		fmt.Fprintln(c.ErrStream, err)
 		return exitCodeErr
 	}
+
 	path := args[1]
-	if isExists(path) {
-		fmt.Fprintf(c.ErrStream, "%s already exits.\n", path)
-		return exitCodeErr
-	}
-	if dir := filepath.Dir(path); !isExists(dir) {
-		fmt.Fprintf(c.ErrStream, "%s does not exit.\n", dir)
-		return exitCodeErr
-	}
 	ext := filepath.Ext(path)
-	if isInValidExt(ext) {
-		fmt.Fprintf(c.ErrStream, "%s is invalid extention.\n", ext)
-		return exitCodeErr
-	}
-	if isInValidBg(bg) {
-		fmt.Fprintf(c.ErrStream, "%s is invalid color.\n", bg)
+	if err := validateArgs(path, ext); err != nil {
+		fmt.Fprintln(c.ErrStream, err)
 		return exitCodeErr
 	}
 
@@ -90,6 +79,7 @@ func (c *CLI) Run(args []string) int {
 		return exitCodeErr
 	}
 	defer file.Close()
+
 	if err := encode(file, img, ext); err != nil {
 		fmt.Fprintln(c.ErrStream, "Error: encode failed.")
 		return exitCodeErr
@@ -117,11 +107,34 @@ func setBg(img *image.RGBA) {
 	}
 }
 
+func validateArgs(path string, ext string) error {
+	// 出力先に同名のファイルが存在するか
+	if isExists(path) {
+		return fmt.Errorf("%s already exits", path)
+	}
+	// 出力先のディレクトリが存在するか
+	if dir := filepath.Dir(path); !isExists(dir) {
+		return fmt.Errorf("%s does not exit", dir)
+	}
+
+	// 対応している拡張子か
+	if isInValidExt(ext) {
+		return fmt.Errorf("%s is invalid extention", ext)
+	}
+
+	// 対応している背景色か
+	if isInValidBg() {
+		return fmt.Errorf("%s is invalid color", bg)
+	}
+
+	return nil
+}
+
 func isInValidExt(ext string) bool {
 	return ext != ".jpg" && ext != ".jpeg" && ext != ".png"
 }
 
-func isInValidBg(bg string) bool {
+func isInValidBg() bool {
 	_, ok := bgColors[bg]
 	return !ok
 }
