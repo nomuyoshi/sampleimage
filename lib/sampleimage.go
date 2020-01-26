@@ -16,6 +16,11 @@ import (
 	"golang.org/x/image/font/gofont/gobold"
 )
 
+// CLI はio.WriterとFlagSetの管理を行う
+type CLI struct {
+	OutStream, ErrStream io.Writer
+}
+
 const (
 	exitCodeOK int = iota
 	exitCodeErr
@@ -28,31 +33,28 @@ var (
 	text   string
 )
 
-// CLI はio.WriterとFlagSetの管理を行う
-type CLI struct {
-	OutStream, ErrStream io.Writer
-	Flag                 *pflag.FlagSet
-}
-
-func (c *CLI) flagSettings(args []string) {
-	c.Flag.IntVarP(&width, "width", "W", 300, "image width")
-	c.Flag.IntVarP(&height, "height", "H", 300, "image height")
-	c.Flag.StringVarP(&text, "text", "t", "SAMPLE", "image text")
-	c.Flag.StringVar(&bg, "bg", "gray", "image background color")
-	c.Flag.SetOutput(c.OutStream)
-	c.Flag.Usage = func() {
-		fmt.Fprintf(c.OutStream, "Usage: sampleimage [file] [options]\n\n")
-		fmt.Fprintf(c.OutStream, "Available extentions:\n  jpeg, jpg, png\n")
-		fmt.Fprintf(c.OutStream, "Available background colors:\n  %s\n", strings.Join(colorNames(), ", "))
-		fmt.Fprintf(c.OutStream, "Options:\n")
-		c.Flag.PrintDefaults()
+func newFlag(outStream io.Writer) *pflag.FlagSet {
+	flag := pflag.NewFlagSet("sampleimage", pflag.ContinueOnError)
+	flag.IntVarP(&width, "width", "W", 300, "image width")
+	flag.IntVarP(&height, "height", "H", 300, "image height")
+	flag.StringVarP(&text, "text", "t", "SAMPLE", "image text")
+	flag.StringVar(&bg, "bg", "gray", "image background color")
+	flag.SetOutput(outStream)
+	flag.Usage = func() {
+		fmt.Fprintf(outStream, "Usage: sampleimage [file] [options]\n\n")
+		fmt.Fprintf(outStream, "Available extentions:\n  jpeg, jpg, png\n")
+		fmt.Fprintf(outStream, "Available background colors:\n  %s\n", strings.Join(colorNames(), ", "))
+		fmt.Fprintf(outStream, "Options:\n")
+		flag.PrintDefaults()
 	}
+
+	return flag
 }
 
 // Run はsampleimageコマンドのメイン処理
 func (c *CLI) Run(args []string) int {
-	c.flagSettings(args)
-	if err := c.Flag.Parse(args[1:]); err != nil {
+	flag := newFlag(c.OutStream)
+	if err := flag.Parse(args[1:]); err != nil {
 		if err == pflag.ErrHelp {
 			return exitCodeOK
 		}
