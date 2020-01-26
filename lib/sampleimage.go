@@ -2,7 +2,6 @@ package sampleimage
 
 import (
 	"fmt"
-	"github.com/spf13/pflag"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -11,6 +10,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/golang/freetype"
+	"github.com/spf13/pflag"
+	"golang.org/x/image/font/gofont/gobold"
 )
 
 const (
@@ -22,6 +25,7 @@ var (
 	width  int
 	height int
 	bg     string
+	text   string
 )
 
 // CLI はio.WriterとFlagSetの管理を行う
@@ -33,6 +37,7 @@ type CLI struct {
 func (c *CLI) flagSettings(args []string) {
 	c.Flag.IntVarP(&width, "width", "W", 100, "image width")
 	c.Flag.IntVarP(&height, "height", "H", 100, "image height")
+	c.Flag.StringVarP(&text, "text", "t", "SAMPLE", "image text")
 	c.Flag.StringVarP(&bg, "bg", "c", "gray", "image background color.")
 	c.Flag.SetOutput(c.OutStream)
 	c.Flag.Usage = func() {
@@ -75,7 +80,9 @@ func (c *CLI) Run(args []string) int {
 	}
 
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
-	setBgColor(img, bg)
+	size := 20.0
+	setBg(img)
+	addText(img, 10, int(float64(height)/2-size/2), size)
 
 	file, err := os.Create(path)
 	if err != nil {
@@ -101,7 +108,7 @@ func encode(f *os.File, img *image.RGBA, ext string) error {
 	}
 }
 
-func setBgColor(img *image.RGBA, bg string) {
+func setBg(img *image.RGBA) {
 	bgColor := color.RGBA{bgColors[bg]["r"], bgColors[bg]["g"], bgColors[bg]["b"], bgColors[bg]["a"]}
 	for y := img.Rect.Min.Y; y < img.Rect.Max.Y; y++ {
 		for x := img.Rect.Min.X; x < img.Rect.Max.X; x++ {
@@ -132,4 +139,19 @@ func colorNames() []string {
 		names = append(names, key)
 	}
 	return names
+}
+
+func addText(img *image.RGBA, x, y int, size float64) error {
+	ft, _ := freetype.ParseFont(gobold.TTF)
+	c := freetype.NewContext()
+	c.SetDst(img)
+	c.SetDPI(72.0)
+	c.SetFont(ft)
+	c.SetFontSize(size)
+	c.SetClip(img.Bounds())
+	c.SetSrc(image.White)
+
+	pt := freetype.Pt(x, y+int(c.PointToFixed(size)>>6))
+	_, err := c.DrawString(text, pt)
+	return err
 }
