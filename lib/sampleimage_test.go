@@ -30,6 +30,21 @@ func removeTestImages() {
 }
 
 func TestRun(t *testing.T) {
+	t.Run("Failed: empty path", func(t *testing.T) {
+		buffer := &bytes.Buffer{}
+		cli := &CLI{OutStream: buffer, ErrStream: buffer}
+		args := strings.Split("sampleimage --bg=red", " ")
+		gotCode := cli.Run(args)
+		gotOutput := buffer.String()
+		wantOutput := "Please specify an output path\n"
+
+		if gotCode != exitCodeErr {
+			t.Errorf("unexpected exit code. want: %d, got: %d.", exitCodeErr, gotCode)
+		}
+		if gotOutput != wantOutput {
+			t.Errorf("unexpected output. want: %s, got: %s", wantOutput, gotOutput)
+		}
+	})
 	t.Run("Failed: invalid bg", func(t *testing.T) {
 		buffer := &bytes.Buffer{}
 		cli := &CLI{OutStream: buffer, ErrStream: buffer}

@@ -63,7 +63,7 @@ func (c *CLI) Run(args []string) int {
 		return exitCodeErr
 	}
 
-	path := args[1]
+	path := flag.Arg(0)
 	ext := filepath.Ext(path)
 	if err := validateArgs(path, ext); err != nil {
 		fmt.Fprintln(c.ErrStream, err)
@@ -110,6 +110,9 @@ func setBg(img *image.RGBA) {
 }
 
 func validateArgs(path string, ext string) error {
+	if len(path) == 0 {
+		return fmt.Errorf("Please specify an output path")
+	}
 	// 出力先に同名のファイルが存在するか
 	if isExists(path) {
 		return fmt.Errorf("%s already exits", path)
